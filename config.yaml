@@ -1,0 +1,30 @@
+# Runtime params
+#===================================
+train:  True # train new or existing model for each channel
+predict: True # generate new predicts or, if False, use predictions stored locally
+test: True
+# use_id: "2020-04-21_17.37.24" 
+# use_id: "2020-09-22_10.53.42" 
+# use_id: "2021-01-05_15.17.33" #PSR
+
+l_s: 50  # the length of window
+s_w: 1  # the step length of window shift
+
+# Train parameters
+# ==================================
+loss_metric: 'binary_crossentropy'
+discriminator_optimizer: optimizers.Adam(0.0001, 0.5)
+generator_optimizer: optimizers.Adam(0.002, 0.5)
+latent_dim: 100 # the length of random noise
+lstm_batch_size: 64  # train batch size
+early_stop: True # whether to early stop when training
+early_stop_threshold: 70 # the threshold used by early stop
+
+# maximum number of epochs allowed (if early stopping criteria not met)
+epochs: 50
+
+# test batch size
+batch_size: 20
+
+# the learning rate of threshold when testing
+threshold_lr: 0.01
