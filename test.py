@@ -34,6 +34,6 @@ class Test:
         for i in range(13178, 13210):
             lab[i] = 1
         # pred = (np.ones(len(pred)) - np.array(pred)).tolist()
-        threshold = 0.58
-        # threshold = self.threshold
+        # threshold = 0.58
+        threshold = self.threshold
         helpers.plotting1(self.id, "Anomaly score (GDScore)", pred, threshold, lab)
