@@ -1,9 +1,9 @@
 from keras.models import Sequential, load_model, Model
 from keras.callbacks import History, EarlyStopping, Callback
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Input
-from keras.layers import Reshape, BatchNormalization, Flatten
+from keras.layers import Reshape, BatchNormalization, Flatten, Embedding
 from keras.layers.recurrent import LSTM
-from keras.layers.core import Dense, Activation, Dropout
+from keras.layers.core import Dense, Activation, Dropout, Flatten
 from keras import optimizers
 from keras.layers.advanced_activations import LeakyReLU
 import numpy as np
@@ -27,6 +27,7 @@ class crnn_model:
         self.g_weight = 0 # the weight of generator used in model test
         self.g_threshold = 0 # the threshold used in model test
         self.d_threshold = 0  # the threshold used in model test
+        self.threshold = 0
         self.median_y_hat = 0
         if self.config.train:
             self.input_shape = (self.config.l_s, self.data.X_train.shape[2], 1)  # (ls, 38, 1)
@@ -37,22 +38,26 @@ class crnn_model:
                                        metrics=['accuracy'])
             # Build the generator
             self.generator = self.generator()
-            # The generator takes noise as input and generates imgs
-            z = Input(shape=(self.latent_dim,))
-            sample = self.generator(z)
+            # The generator takes traning samples as input
+            input = Input(shape=self.input_shape)
+            sample = self.generator(input)
             # For the combined model we will only train the generator
             self.discriminator.trainable = False
             # The discriminator takes generated images as input and determines validity
             valid = self.discriminator(sample)
             # The combined model  (stacked generator and discriminator)
             # Trains the generator to fool the discriminator
-            self.combined = Model(z, valid)
+            self.combined = Model(input, valid)
             self.combined.compile(loss=self.config.loss_metric, optimizer=eval(self.config.generator_optimizer))
             self.train_new()
             self.save()
 
     def generator(self):
         model = Sequential()
+        # project training samples to vector
+        model.add(Flatten(input_shape=self.input_shape))
+        model.add(Dense(self.latent_dim, activation="relu"))
+        # vector with latent_dim
         model.add(Dense(self.config.l_s * self.data.X_train.shape[2], activation="relu", input_dim=self.latent_dim))
         model.add(Reshape(self.input_shape))
         model.add(UpSampling2D())
@@ -77,9 +82,9 @@ class crnn_model:
         model.add(Dense(self.config.l_s * self.data.X_train.shape[2], activation='tanh'))
         model.add(Reshape(self.input_shape))
         model.summary()
-        noise = Input(shape=(self.latent_dim,))
-        gen_sample = model(noise)
-        return Model(noise, gen_sample)
+        sample = Input(shape=self.input_shape)
+        gen_sample = model(sample)
+        return Model(sample, gen_sample)
 
     def discriminator(self):
         model = Sequential()
@@ -121,9 +126,9 @@ class crnn_model:
             X_train = self.data.X_train
             idx = np.random.randint(0, X_train.shape[0], self.config.lstm_batch_size)
             samples = X_train[idx]
-            noise = np.random.normal(0, 1, (self.config.lstm_batch_size, self.latent_dim))
+            # noise = np.random.normal(0, 1, (self.config.lstm_batch_size, self.latent_dim))
             # Generate a batch of new images
-            gen_samples = self.generator.predict(noise)
+            gen_samples = self.generator.predict(samples)
             # Train the discriminator
             d_loss_real = self.discriminator.train_on_batch(samples, valid)
             d_loss_fake = self.discriminator.train_on_batch(gen_samples, fake)
@@ -131,9 +136,9 @@ class crnn_model:
             # ---------------------
             #  Train Generator
             # ---------------------
-            noise = np.random.normal(0, 1, (self.config.lstm_batch_size, self.latent_dim))
+            # noise = np.random.normal(0, 1, (self.config.lstm_batch_size, self.latent_dim))
             # Train the generator (to have the discriminator label samples as valid)
-            g_loss = self.combined.train_on_batch(noise, valid)
+            g_loss = self.combined.train_on_batch(samples, valid)
             # ---------------------
             #  claculate the aggregative indicator
             # ---------------------
@@ -142,7 +147,7 @@ class crnn_model:
             cos_simi_list = np.abs(helpers.cos_similarity(gen_samples, samples))
             cos_simi = 100 * np.mean(cos_simi_list) # the cosine similarity of generator
             g_d = 0.5 * (acc + cos_simi) # the aggregative indicator
-            # Plot the progress
+            # Print the progress
             logger.info("epoch: %d [D loss: %f] [G loss: %f] [D accuracy: %.2f%%] [G cosine_similarity: %.2f%%] [G cosine_similarity + D accuracy: %.2f%%]" % (epoch, d_loss[0], g_loss, acc, cos_simi, g_d))
             # judge whether reach to epochs and whether to early stop
             if epoch == self.config.epochs - 1 or (self.config.early_stop and g_d > self.config.early_stop_threshold):
@@ -150,14 +155,12 @@ class crnn_model:
                 self.g_weight = cos_simi / (acc + cos_simi)
                 y_hat = self.discriminator.predict(samples)
                 min_y_hat = np.min(y_hat)
-                max_y_hat = np.max(y_hat)
-                self.median_y_hat = np.median(y_hat)
-                mean_y_hat = np.mean(y_hat)
                 min_cos_simi = np.min(cos_simi_list)
                 self.g_threshold = min_cos_simi
-                self.d_threshold = np.min([max_y_hat - self.median_y_hat, self.median_y_hat - min_y_hat])
+                self.d_threshold = min_y_hat
+                self.threshold = 1 - (self.g_threshold * self.g_weight + self.d_threshold * (1 - self.g_weight))
                 logger.info("generator weight: %.2f, y_hat: %.2f, cosine similarity: %.2f" % (self.g_weight, min_y_hat, min_cos_simi))
-                info = {"g_weight" : self.g_weight, "g_threshold" : self.g_threshold, "d_threshold" : self.d_threshold, "median_y_hat" : self.median_y_hat}
+                info = {"g_weight" : self.g_weight, "g_threshold" : self.g_threshold, "d_threshold" : self.d_threshold, "threshold" : self.threshold}
                 np.save("results/" + self.run_id + "/models/testparas.npy", info)
                 break
 
