@@ -2,10 +2,8 @@
 #===================================
 train:  True # train new or existing model for each channel
 predict: True # generate new predicts or, if False, use predictions stored locally
-test: True
-# use_id: "2020-04-21_17.37.24" 
-# use_id: "2020-09-22_10.53.42" 
-# use_id: "2021-01-05_15.17.33" #PSR
+test: False # process the results
+use_id: "2021-11-05_14.56.36" # save the results for each run
 
 l_s: 50  # the length of window
 s_w: 1  # the step length of window shift
@@ -21,7 +19,7 @@ early_stop: True # whether to early stop when training
 early_stop_threshold: 70 # the threshold used by early stop
 
 # maximum number of epochs allowed (if early stopping criteria not met)
-epochs: 50
+epochs: 30
 
 # test batch size
 batch_size: 20
