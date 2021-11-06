@@ -19,10 +19,9 @@ def cos_similarity(gen_samples, samples):
             pairs = [gen_sample[:][j], sample[:][j]]
             res = cosine_similarity(pairs)[0][1]
             res_para.append(np.abs(res))
-        top5 = heapq.nsmallest(5, range(len(res_para)), res_para.__getitem__)
-        print(top5)
+        # top5 = heapq.nsmallest(5, range(len(res_para)), res_para.__getitem__)
+        # print(top5)
         res_list.append(res_para)
-    # print(res_list)
     return res_list
 
 
@@ -102,11 +101,10 @@ def plotting1(id, name, score, threshold, label=[]):
     plt.show()
 
 
-def plotting2(id, name, score, median, threshold):
+def plotting2(id, name, score, threshold):
     plt.figure(figsize=(12, 6))
     plt.plot(score, label=name, linewidth=1)
-    # plt.plot((median + threshold)*np.ones(len(score)), label='Upper threshold', linewidth=3, color='#FFA500')
-    # plt.plot((median - threshold)*np.ones(len(score)), label='Lower threshold', linewidth=3, color='#FFA500')
+    plt.plot(threshold*np.ones(len(score)), label='threshold', linewidth=3, color='#FFA500')
     font = {"family": "Times New Roman", "size": 18}
     plt.xlabel("Time steps", font)
     plt.ylabel("Value", font)
