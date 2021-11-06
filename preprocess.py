@@ -3,9 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.decomposition import PCA
 current_path = os.path.abspath(__file__)
 logger = logging.getLogger('crgan')
 
@@ -13,14 +11,14 @@ logger = logging.getLogger('crgan')
 class Dataprocess():
     def __init__(self, id, config):
         self.train = "data/train.csv"
-        self.test = "data/test3.csv"
+        self.test = "data/test.csv"
         self.id = id
         self.config = config
         self.X_train = None
         self.y_train = []
         self.X_test = None
         self.y_test = []
-        self.test_label = None
+        self.test_label = None  # read from csv
 
     def load_data(self):
         if self.config.train:
@@ -31,17 +29,10 @@ class Dataprocess():
             scaler = StandardScaler(with_mean=0, with_std=1)  # the mean and variance of train dataset
             scaler = scaler.fit(data.astype(float))
             data = scaler.transform(data)
-            # np.save('train.npy', data)  # data save as .npy, using for train、offline test
-            # file = np.load(self.train, "r")
-            # data = file[:, 0:-1]  # the last column is label
             data = self.data_process(data)
             # self.plotting(data)
             self.shape_data(data)
         if self.config.predict:
-            # file = np.load(self.test, "r")
-            # data = file[:, 0:-1]  # the last column is label
-            # label = file[:, -1]
-            # self.test_label = self.shape_label(label)
             csv_data = pd.read_csv(self.test, index_col=0)  # read csv
             df_data = pd.DataFrame(csv_data)  # save as dataframe
             df_data = df_data.fillna(df_data.mean())  # fill none
@@ -82,15 +73,6 @@ class Dataprocess():
         data = scaler.transform(data)
         return data
 
-    def pca(self, X_n, n_components):
-        pca = PCA(n_components, svd_solver='full')
-        pca.fit(X_n)
-        ex_var = pca.explained_variance_ratio_
-        pc = pca.components_
-        # projected values on the principal component
-        T_n = np.matmul(X_n, pc.transpose(1, 0))
-        return T_n
-
     def plotting(self, data):
         plt.figure()
         data = data[1000:4000, 24:33]
@@ -105,16 +87,6 @@ class Dataprocess():
         plt.ylabel("Parameters", font1)
         plt.show()
         plt.savefig(os.path.abspath(current_path) + "/../results/" + self.id + "/figures/paras.png")
-
-        # m, n = data.shape
-        # f, ax = plt.subplots(figsize=(100, n))
-        # sns.heatmap(data.transpose(), ax=ax, vmax=1, vmin=0, cbar=True)
-        # ax.set_xlabel('Time steps', font1)
-        # ax.set_ylabel('Parameters', font1)
-        # plt.xticks(())
-        # plt.tick_params(labelsize=18)
-        # # plt.yticks(())
-        # plt.show()
 
 
 
