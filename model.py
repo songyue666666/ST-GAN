@@ -155,7 +155,7 @@ class crnn_model:
                 self.g_weight = cos_simi / (acc + cos_simi)
                 y_hat = self.discriminator.predict(samples)
                 min_y_hat = np.min(y_hat)
-                min_cos_simi = np.min(cos_simi_list)
+                min_cos_simi = np.min(np.mean(cos_simi_list, axis=1))
                 self.g_threshold = min_cos_simi
                 self.d_threshold = min_y_hat
                 self.threshold = 1 - (self.g_threshold * self.g_weight + self.d_threshold * (1 - self.g_weight))
